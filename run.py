@@ -19,16 +19,16 @@ if __name__ == '__main__':
     np.random.seed(fix_seed)
 
     parser = argparse.ArgumentParser(description='TimesNet')
-    parser.add_argument('--without_static', type=int, required=False, default=0, help='1表示去掉 0 不去掉')
-    parser.add_argument('--without_rain',type=int, required=False, default=0, help='use_future_rain')
-    parser.add_argument('--without_gate', type=int, required=False, default=0, help='use_future_rain')
-    parser.add_argument('--without_propagation', type=int, required=False, default=0, help='use_future_rain')
-    parser.add_argument('--without_cls', type=int, required=False, default=0, help='use_future_rain')
-    parser.add_argument('--without_contrastive', type=int, required=False, default=0,help='use_future_rain')
-    parser.add_argument('--without_future_rain', type=int, required=False, default=0,help='use_future_rain')
-    parser.add_argument('--use_real_rain', type=int, required=False, default=0,help='use_future_rain')
-    parser.add_argument('--number_fuse', type=int, required=False, default=0,help='use_future_rain')
-    parser.add_argument('--embed_fuse', type=int, required=False, default=0,help='use_future_rain')
+    parser.add_argument('--without_static', type=int, required=False, default=0, help='')
+    parser.add_argument('--without_rain',type=int, required=False, default=0, help='')
+    parser.add_argument('--without_gate', type=int, required=False, default=0, help='')
+    parser.add_argument('--without_propagation', type=int, required=False, default=0, help='')
+    parser.add_argument('--without_cls', type=int, required=False, default=0, help='')
+    parser.add_argument('--without_contrastive', type=int, required=False, default=0,help='')
+    parser.add_argument('--without_future_rain', type=int, required=False, default=0,help='')
+    parser.add_argument('--use_real_rain', type=int, required=False, default=0,help='')
+    parser.add_argument('--number_fuse', type=int, required=False, default=0,help='')
+    parser.add_argument('--embed_fuse', type=int, required=False, default=0,help='')
 
     # basic config
    
