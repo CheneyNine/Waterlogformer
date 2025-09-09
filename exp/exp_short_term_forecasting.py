@@ -19,7 +19,7 @@ class MSE_MAELoss(nn.Module):
         super().__init__()
         self.mse = nn.MSELoss()
         self.mae = nn.L1Loss()
-        self.alpha = alpha  # 权重调节
+        self.alpha = alpha 
 
     def forward(self, pred, target):
         return self.alpha * self.mse(pred, target) + (1 - self.alpha) * self.mae(pred, target)
@@ -49,17 +49,8 @@ class Exp_Short_Term_Forecast(Exp_Basic):
         return model_optim
 
     def _select_criterion(self, loss_name='MSE'):
-        criterion = MSE_MAELoss(alpha=0.5)  # 以 MSE 为主，兼顾 MAE
+        criterion = MSE_MAELoss(alpha=0.5)  
         return criterion
-
-        if loss_name == 'MSE':
-            return nn.MSELoss()
-        elif loss_name == 'MAPE':
-            return mape_loss()
-        elif loss_name == 'MASE':
-            return mase_loss()
-        elif loss_name == 'SMAPE':
-            return smape_loss()
 
     def train(self, setting):
         train_data, train_loader = self._get_data(flag='train')
@@ -92,25 +83,20 @@ class Exp_Short_Term_Forecast(Exp_Basic):
                 batch_y = batch_y.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # decoder input
-                dec_inp_known = batch_y[:, :, :self.args.label_len, :]                      # shape: [B, N, L_label, D]
-                dec_inp_zeros = torch.zeros_like(batch_y[:, :, -self.args.pred_len:, :])   # shape: [B, N, L_pred, D]
+                dec_inp_known = batch_y[:, :, :self.args.label_len, :]                      
+                dec_inp_zeros = torch.zeros_like(batch_y[:, :, -self.args.pred_len:, :])   
 
-                dec_inp = torch.cat([dec_inp_known, dec_inp_zeros], dim=2)       # shape: [B, N, L_label + L_pred, D]
-
-                #=======模型运行=======
+                dec_inp = torch.cat([dec_inp_known, dec_inp_zeros], dim=2)   
                 outputs,total_contrastive_loss = self.model(batch_x,future_rain_data, None, dec_inp, None)
-                
-
-                f_dim = 0  # 只取第一个特征
-                batch_y = batch_y[:, :, -self.args.pred_len:, f_dim]  # => [32, 63, 24]
+            
+                f_dim = 0 
+                batch_y = batch_y[:, :, -self.args.pred_len:, f_dim]
                 batch_y=batch_y[:,7:,:]
                 batch_y = batch_y.to(self.device)
-
                 batch_y_mark = batch_y_mark[:, -self.args.pred_len:, f_dim:].to(self.device)
                 loss_value = criterion(batch_x, self.args.frequency_map, outputs, batch_y, batch_y_mark)
                 loss_sharpness = mse((outputs[:, 1:, :] - outputs[:, :-1, :]), (batch_y[:, 1:, :] - batch_y[:, :-1, :]))
-                loss = loss_value  # + loss_sharpness * 1e-5
+                loss = loss_value 
                 train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
@@ -156,7 +142,7 @@ class Exp_Short_Term_Forecast(Exp_Basic):
             dec_inp = torch.cat([x[:, -self.args.label_len:, :], dec_inp], dim=1).float()
             # encoder - decoder
             outputs = torch.zeros((B, self.args.pred_len, C)).float()  # .to(self.device)
-            id_list = np.arange(0, B, 500)  # validation set size
+            id_list = np.arange(0, B, 500) 
             id_list = np.append(id_list, B)
             for i in range(len(id_list) - 1):
                 outputs[id_list[i]:id_list[i + 1], :, :] = self.model(x[id_list[i]:id_list[i + 1]], None,

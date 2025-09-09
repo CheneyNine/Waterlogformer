@@ -53,7 +53,6 @@ class Dataset_Custom_Baseline(Dataset):
         self.root_path = root_path
         self.data_path = data_path
 
-        # 加载所有点的静态特征
         self.all_points_features = pd.read_csv('/root/Time-Series-Library-main/dataset/all_points_features.csv')
         numeric_cols = self.all_points_features.select_dtypes(include=['number']).columns.tolist()
         self.point_static_features = self.all_points_features[['device_name_label'] + numeric_cols] \
@@ -75,7 +74,6 @@ class Dataset_Custom_Baseline(Dataset):
 
         df_data = df_raw[['date'] + self.all_cols]
 
-        # 分割训练、验证、测试集
         num_train = int(len(df_raw) * self.train_split)
         num_test = int(len(df_raw) * self.test_split)
         num_vali = len(df_raw) - num_train - num_test
@@ -91,7 +89,6 @@ class Dataset_Custom_Baseline(Dataset):
         else:
             data = df_data[self.all_cols].values
 
-        # 时间特征
         df_stamp = df_data[['date']][border1:border2]
         df_stamp['date'] = pd.to_datetime(df_stamp['date'])
         if self.timeenc == 0:
@@ -122,7 +119,6 @@ class Dataset_Custom_Baseline(Dataset):
         seq_x = seq_x.T[:, :, np.newaxis]  # (N, T, 1)
         seq_y = seq_y.T[:, :, np.newaxis]  # (N, T, 1)
 
-        # 加入静态特征 (N, F_static)
         static_features = []
         for col in self.all_cols:
             features = list(self.point_static_features[col].values())
@@ -130,13 +126,11 @@ class Dataset_Custom_Baseline(Dataset):
 
         static_features = np.array(static_features)  # (N, F_static)
 
-        # 扩展维度与时间对齐 (N, T, F_static)
         static_features_x = np.repeat(static_features[:, np.newaxis, :], self.seq_len, axis=1)
         static_features_y = np.repeat(static_features[:, np.newaxis, :], self.label_len + self.pred_len, axis=1)
 
-        # 合并动态和静态特征
-        seq_x = np.concatenate([seq_x, static_features_x], axis=-1)  # (N, T, F_total)
-        seq_y = np.concatenate([seq_y, static_features_y], axis=-1)  # (N, T, F_total)
+        seq_x = np.concatenate([seq_x, static_features_x], axis=-1) 
+        seq_y = np.concatenate([seq_y, static_features_y], axis=-1)  
 
         seq_x_mark = self.data_stamp[s_begin:s_end]
         seq_y_mark = self.data_stamp[r_begin:r_end]
@@ -144,7 +138,7 @@ class Dataset_Custom_Baseline(Dataset):
         # No rain data in baseline, set future_rain_data to None
         future_rain_data = torch.empty(0)
         # Take the first value along the last dimension for seq_x
-        seq_x = seq_x[:, :, 0]  # take the first value along the last dimension
+        seq_x = seq_x[:, :, 0]
         return seq_x, seq_y, seq_x_mark, seq_y_mark, future_rain_data
 
     def __len__(self):
@@ -153,145 +147,6 @@ class Dataset_Custom_Baseline(Dataset):
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
 
-
-class Dataset_Custom_Project(Dataset):
-    def __init__(self, args, root_path, flag='train', size=None,
-                 features='S', data_path='ETTh1.csv',
-                 target='OT', scale=False, timeenc=0, freq='h',
-                 time_col_name='date',use_time_features=False,
-                 train_split=0.6,test_split=0.2,half=0,all=0,one_channel=0,seasonal_patterns=None):
-        # size [seq_len, label_len, pred_len]
-        self.args = args
-        # info
-        if size == None:
-            self.seq_len = 24 * 4 * 4
-            self.label_len = 24 * 4
-            self.pred_len = 24 * 4
-        else:
-            self.seq_len = size[0]
-            self.label_len = size[1]
-            self.pred_len = size[2]
-        # init
-        assert flag in ['train', 'test', 'val']
-        type_map = {'train': 0, 'val': 1, 'test': 2}
-        self.set_type = type_map[flag]
-
-        self.features = features
-        self.target = target
-        self.scale = scale
-        self.timeenc = timeenc
-        self.freq = freq
-        self.train_split=train_split
-        self.test_split=test_split
-        self.root_path = root_path
-        self.data_path = data_path
-        self.__read_data__()
-
-    def __read_data__(self):
-        self.scaler = StandardScaler()
-        df_raw = pd.read_csv(os.path.join(self.root_path,
-                                          self.data_path))
-
-        '''
-        df_raw.columns: ['date', ...(other features), target feature]
-        '''
-        cols = list(df_raw.columns)
-        # cols.remove(self.target)
-        cols.remove('date')
-        # df_raw = df_raw[['date'] + cols + [self.target]]
-        # df_raw = df_raw[['date'] + cols ]
-
-        #----------------------------
-        # 假设你的数据有 56 个洪水检测点和 1 个降雨检测点，列名可以分别以 'flood' 和 'rain' 开头
-
-        flood_cols = [col for col in cols if 'flood' in col]  # 假设洪水检测点列名包含 'flood'
-        rain_cols = [col for col in cols if 'rain' in col]  # 假设降雨检测点列名包含 'rain'
-        
-        # # 选择一个洪水检测点和一个降雨检测点
-
-        # selected_flood = flood_cols[0]  
-        # selected_rain = rain_cols[0]  
-
-        # 假设你选择的洪水监测点和降雨监测点列名
-        self.flood_cols = flood_cols
-        self.rain_cols = rain_cols
-
-        # 创建包含选定的洪水和降雨数据的新 DataFrame
-        
-        df_data = df_raw[['date'] + flood_cols + rain_cols]
-        #----------------------------
-
-
-        num_train = int(len(df_raw) * self.train_split)
-        num_test = int(len(df_raw) * self.test_split)
-        num_vali = len(df_raw) - num_train - num_test
-        border1s = [0, num_train - self.seq_len, len(df_raw) - num_test - self.seq_len]
-        border2s = [num_train, num_train + num_vali, len(df_raw)]
-        border1 = border1s[self.set_type]
-        border2 = border2s[self.set_type]
-
-        if self.features == 'M' or self.features == 'MS':
-            cols_data = df_raw.columns[1:]
-            df_data = df_raw[cols_data]
-        elif self.features == 'S':
-            df_data = df_raw[[self.target]]
-
-        if self.scale:
-            train_data = df_data[border1s[0]:border2s[0]]
-            self.scaler.fit(train_data.values)
-            data = self.scaler.transform(df_data.values)
-        else:
-            data = df_data.values
-
-        df_stamp = df_raw[['date']][border1:border2]
-        df_stamp['date'] = pd.to_datetime(df_stamp.date)
-        if self.timeenc == 0:
-            df_stamp['month'] = df_stamp.date.apply(lambda row: row.month, 1)
-            df_stamp['day'] = df_stamp.date.apply(lambda row: row.day, 1)
-            df_stamp['weekday'] = df_stamp.date.apply(lambda row: row.weekday(), 1)
-            df_stamp['hour'] = df_stamp.date.apply(lambda row: row.hour, 1)
-            data_stamp = df_stamp.drop(['date'], 1).values
-        elif self.timeenc == 1:
-            data_stamp = time_features(pd.to_datetime(df_stamp['date'].values), freq=self.freq)
-            data_stamp = data_stamp.transpose(1, 0)
-
-        self.data_x = data[border1:border2]
-        self.data_y = data[border1:border2]
-
-        if self.set_type == 0 and self.args.augmentation_ratio > 0:
-            self.data_x, self.data_y, augmentation_tags = run_augmentation_single(self.data_x, self.data_y, self.args)
-
-        self.data_stamp = data_stamp
-
-    def __getitem__(self, index):
-        
-        s_begin = index
-        s_end = s_begin + self.seq_len
-        r_begin = s_end - self.label_len
-        r_end = r_begin + self.label_len + self.pred_len
-        
-        # 随机选择一个洪水监测点
-        selected_flood = random.choice(self.flood_cols)
-        selected_rain = self.rain_cols[0]  
-
-        # 获取选择的洪水监测点和降雨监测点数据
-        seq_x = self.data_x[s_begin:s_end, [self.flood_cols.index(selected_flood), len(self.flood_cols) + self.rain_cols.index(selected_rain)]]
-        seq_y = self.data_y[r_begin:r_end, [self.flood_cols.index(selected_flood), len(self.flood_cols) + self.rain_cols.index(selected_rain)]]
-        seq_x_mark = self.data_stamp[s_begin:s_end]
-        seq_y_mark = self.data_stamp[r_begin:r_end]
-        
-        # 获取未来pred_len的降雨数据
-        future_rain_data = self.data_x[s_end:s_end + self.pred_len, len(self.flood_cols) + self.rain_cols.index(selected_rain)]
-
-        return seq_x, seq_y, seq_x_mark, seq_y_mark, future_rain_data
-
-
-
-    def __len__(self):
-        return len(self.data_x) - self.seq_len - self.pred_len + 1
-
-    def inverse_transform(self, data):
-        return self.scaler.inverse_transform(data)
 
 class Dataset_Custom(Dataset):
     def __init__(self, args, root_path, flag='train', size=None,
@@ -323,16 +178,10 @@ class Dataset_Custom(Dataset):
         self.root_path = root_path
         self.data_path = data_path
 
-        # 加载所有点的静态特征
-        # self.all_points_features = pd.read_csv('/Users/cheney/Downloads/root/Time-Series-Library-main/dataset/all_points_features.csv')
-        # self.point_static_features = self.all_points_features.set_index('device_name').to_dict('index')
-        # 加载所有点的静态特征
-        self.all_points_features = pd.read_csv('/root/Time-Series-Library-main/dataset/all_points_features.csv')
+        self.all_points_features = pd.read_csv('/dataset/all_points_features.csv')
 
-        # 只保留数值型列（去掉 device_name，再筛选数值型）
         numeric_cols = self.all_points_features.select_dtypes(include=['number']).columns.tolist()
 
-        # 然后保留 device_name（做 index） 和 数值列
         self.point_static_features = self.all_points_features[['device_name_label'] + numeric_cols] \
             .set_index('device_name_label') \
             .to_dict('index')
@@ -344,13 +193,10 @@ class Dataset_Custom(Dataset):
 
         cols = list(df_raw.columns)
         cols.remove('date')
-
         self.flood_cols = [col for col in cols if 'flood' in col]
         self.rain_cols = [col for col in cols if 'rain' in col]
-        self.all_cols =  self.rain_cols +self.flood_cols # 总共 N=63 个节点
+        self.all_cols =  self.rain_cols +self.flood_cols 
         df_data = df_raw[['date'] + self.all_cols]
-        # print(self.all_cols)
-        # 分割训练、验证、测试集
         num_train = int(len(df_raw) * self.train_split)
         num_test = int(len(df_raw) * self.test_split)
         num_vali = len(df_raw) - num_train - num_test
@@ -366,20 +212,17 @@ class Dataset_Custom(Dataset):
         else:
             data = df_data[self.all_cols].values
 
-        # 时间特征
         df_stamp = df_data[['date']][border1:border2]
         df_stamp['date'] = pd.to_datetime(df_stamp['date'])
         # store raw dates for span filtering
         self.date_series = df_stamp['date'].reset_index(drop=True)
         if self.timeenc == 0:
-            print("timeenc==0")
             df_stamp['month'] = df_stamp.date.apply(lambda row: row.month, 1)
             df_stamp['day'] = df_stamp.date.apply(lambda row: row.day, 1)
             df_stamp['weekday'] = df_stamp.date.apply(lambda row: row.weekday(), 1)
             df_stamp['hour'] = df_stamp.date.apply(lambda row: row.hour, 1)
             data_stamp = df_stamp.drop(['date'], 1).values
         else:
-            print("timeenc==1")
             data_stamp = time_features(pd.to_datetime(df_stamp['date'].values), freq=self.freq)
             data_stamp = data_stamp.transpose(1, 0)
 
@@ -403,36 +246,29 @@ class Dataset_Custom(Dataset):
         r_begin = s_end - self.label_len
         r_end = r_begin + self.label_len + self.pred_len
 
-        # (T, N) -> (N, T, 1)
-        seq_x = self.data_x[s_begin:s_end]  # (T, N)
-        seq_y = self.data_y[r_begin:r_end]  # (T, N)
+        seq_x = self.data_x[s_begin:s_end] 
+        seq_y = self.data_y[r_begin:r_end] 
 
-        seq_x = seq_x.T[:, :, np.newaxis]  # (N, T, 1)
-        seq_y = seq_y.T[:, :, np.newaxis]  # (N, T, 1)
+        seq_x = seq_x.T[:, :, np.newaxis]
+        seq_y = seq_y.T[:, :, np.newaxis]
 
-        # 加入静态特征 (N, F_static)
         static_features = []
         for col in self.all_cols:
             features = list(self.point_static_features[col].values())
             static_features.append(features)
 
-        static_features = np.array(static_features)  # (N, F_static)
-
-        # 扩展维度与时间对齐 (N, T, F_static)
+        static_features = np.array(static_features)
         static_features_x = np.repeat(static_features[:, np.newaxis, :], self.seq_len, axis=1)
         static_features_y = np.repeat(static_features[:, np.newaxis, :], self.label_len + self.pred_len, axis=1)
 
-        # 合并动态和静态特征
-        seq_x = np.concatenate([seq_x, static_features_x], axis=-1)  # (N, T, F_total)
-        seq_y = np.concatenate([seq_y, static_features_y], axis=-1)  # (N, T, F_total)
+        seq_x = np.concatenate([seq_x, static_features_x], axis=-1) 
+        seq_y = np.concatenate([seq_y, static_features_y], axis=-1)  
 
         seq_x_mark = self.data_stamp[s_begin:s_end]
         seq_y_mark = self.data_stamp[r_begin:r_end]
-        # print(seq_x_mark)
-        # print(seq_y_mark)
-        # 获取未来的降雨数据，尺寸调整为 (63, 24, 7)
-        future_rain_data = self.data_x[s_end:s_end + self.pred_len]  # 先获取未来的降雨数据，尺寸为 (24, 63, 7)
-        future_rain_data = future_rain_data.T  # 转置为 (63, 24, 7)
+      
+        future_rain_data = self.data_x[s_end:s_end + self.pred_len]  
+        future_rain_data = future_rain_data.T 
 
         return seq_x, seq_y, seq_x_mark, seq_y_mark, future_rain_data
 
@@ -443,108 +279,6 @@ class Dataset_Custom(Dataset):
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
 
-
-class Dataset_Custom_Original(Dataset):
-    def __init__(self, args, root_path, flag='train', size=None,
-                 features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None):
-        # size [seq_len, label_len, pred_len]
-        self.args = args
-        # info
-        if size == None:
-            self.seq_len = 24 * 4 * 4
-            self.label_len = 24 * 4
-            self.pred_len = 24 * 4
-        else:
-            self.seq_len = size[0]
-            self.label_len = size[1]
-            self.pred_len = size[2]
-        # init
-        assert flag in ['train', 'test', 'val']
-        type_map = {'train': 0, 'val': 1, 'test': 2}
-        self.set_type = type_map[flag]
-
-        self.features = features
-        self.target = target
-        self.scale = scale
-        self.timeenc = timeenc
-        self.freq = freq
-
-        self.root_path = root_path
-        self.data_path = data_path
-        self.__read_data__()
-
-    def __read_data__(self):
-        self.scaler = StandardScaler()
-        df_raw = pd.read_csv(os.path.join(self.root_path,
-                                          self.data_path))
-
-        '''
-        df_raw.columns: ['date', ...(other features), target feature]
-        '''
-        cols = list(df_raw.columns)
-        cols.remove(self.target)
-        cols.remove('date')
-        df_raw = df_raw[['date'] + cols + [self.target]]
-        num_train = int(len(df_raw) * 0.7)
-        num_test = int(len(df_raw) * 0.2)
-        num_vali = len(df_raw) - num_train - num_test
-        border1s = [0, num_train - self.seq_len, len(df_raw) - num_test - self.seq_len]
-        border2s = [num_train, num_train + num_vali, len(df_raw)]
-        border1 = border1s[self.set_type]
-        border2 = border2s[self.set_type]
-
-        if self.features == 'M' or self.features == 'MS':
-            cols_data = df_raw.columns[1:]
-            df_data = df_raw[cols_data]
-        elif self.features == 'S':
-            df_data = df_raw[[self.target]]
-
-        if self.scale:
-            train_data = df_data[border1s[0]:border2s[0]]
-            self.scaler.fit(train_data.values)
-            data = self.scaler.transform(df_data.values)
-        else:
-            data = df_data.values
-
-        df_stamp = df_raw[['date']][border1:border2]
-        df_stamp['date'] = pd.to_datetime(df_stamp.date)
-        if self.timeenc == 0:
-            df_stamp['month'] = df_stamp.date.apply(lambda row: row.month, 1)
-            df_stamp['day'] = df_stamp.date.apply(lambda row: row.day, 1)
-            df_stamp['weekday'] = df_stamp.date.apply(lambda row: row.weekday(), 1)
-            df_stamp['hour'] = df_stamp.date.apply(lambda row: row.hour, 1)
-            data_stamp = df_stamp.drop(['date'], 1).values
-        elif self.timeenc == 1:
-            data_stamp = time_features(pd.to_datetime(df_stamp['date'].values), freq=self.freq)
-            data_stamp = data_stamp.transpose(1, 0)
-
-        self.data_x = data[border1:border2]
-        self.data_y = data[border1:border2]
-
-        if self.set_type == 0 and self.args.augmentation_ratio > 0:
-            self.data_x, self.data_y, augmentation_tags = run_augmentation_single(self.data_x, self.data_y, self.args)
-
-        self.data_stamp = data_stamp
-
-    def __getitem__(self, index):
-        s_begin = index
-        s_end = s_begin + self.seq_len
-        r_begin = s_end - self.label_len
-        r_end = r_begin + self.label_len + self.pred_len
-
-        seq_x = self.data_x[s_begin:s_end]
-        seq_y = self.data_y[r_begin:r_end]
-        seq_x_mark = self.data_stamp[s_begin:s_end]
-        seq_y_mark = self.data_stamp[r_begin:r_end]
-
-        return seq_x, seq_y, seq_x_mark, seq_y_mark
-
-    def __len__(self):
-        return len(self.data_x) - self.seq_len - self.pred_len + 1
-
-    def inverse_transform(self, data):
-        return self.scaler.inverse_transform(data)
 
 
 class Dataset_ETT_hour(Dataset):
