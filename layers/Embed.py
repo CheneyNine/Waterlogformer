@@ -166,64 +166,20 @@ import torch.nn as nn
 
 class PatchEmbedding(nn.Module):
     def __init__(self, d_model, patch_len, stride, padding, dropout):
-        """时间序列的Patch嵌入模块
-        参数:
-            d_model:  嵌入维度（Transformer的特征维度）
-            patch_len: 每个patch的长度（时间窗口大小）
-            stride:    滑动步长
-            padding:   右侧填充量（用于调整序列长度）
-            dropout:   Dropout概率
-        """
+    
         super(PatchEmbedding, self).__init__()
-        
-        # 时间序列分块（Patching）相关参数
         self.patch_len = patch_len
         self.stride = stride
-        
-        # 序列填充层（在序列右侧进行复制填充）
-        self.padding_patch_layer = nn.ReplicationPad1d((0, padding))  # (左填充, 右填充)
-
-        # 值嵌入：将每个patch映射到d_model维空间
+        self.padding_patch_layer = nn.ReplicationPad1d((0, padding)) 
         self.value_embedding = nn.Linear(patch_len, d_model, bias=False)
-
-        # 位置嵌入：为每个patch添加位置信息
         self.position_embedding = PositionalEmbedding(d_model)
-
-        # 残差连接的Dropout
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        """输入处理流程
-        输入形状: (batch_size, n_vars, seq_len)
-        输出形状: (batch_size * n_vars, num_patches, d_model)
-        """
-        # 1. 数据预处理 ---------------------------------------------------
-        n_vars = x.shape[1]  # 记录原始变量数（多变量时间序列的通道数）
         
-        # 对输入序列进行右侧填充（使unfold操作可以完整分割序列）
-        x = self.padding_patch_layer(x)  # 输出形状: (batch_size, n_vars, padded_seq_len)
-
-        # 2. 时间序列分块 -------------------------------------------------
-        # 使用unfold进行滑动窗口采样（类似图像中的卷积核滑动）
-        # 维度说明：dimension=-1 表示在最后一个维度（时间维度）进行展开
+        n_vars = x.shape[1] 
+        x = self.padding_patch_layer(x)  
         x = x.unfold(dimension=-1, size=self.patch_len, step=self.stride)
-        # 此时形状: (batch_size, n_vars, num_patches, patch_len)
-        
-        # 3. 维度重组 -----------------------------------------------------
-        # 将多变量展开到batch维度，合并批次和变量维度
-        # x = torch.reshape(x, (x.shape[0] * x.shape[1], x.shape[2], x.shape[3]))
-        # 当前形状: (batch_size * n_vars, num_patches, patch_len)
-
-        # 4. 特征嵌入 -----------------------------------------------------
-        # 值嵌入（线性投影）: 将每个patch的patch_len个特征映射到d_model维
-        # x = self.value_embedding(x)  # 形状变为: (..., num_patches, d_model)
-        
-
-        # 位置嵌入: 为每个patch添加位置信息（使用自定义的位置编码）
-        # x = x + self.position_embedding(x)  # 注意这里的位置编码需要自己实现
-
-        # 5. 正则化处理 ---------------------------------------------------
-        # return self.dropout(x), n_vars  # 返回嵌入结果和原始变量数（供后续恢复维度使用）
         return x, n_vars
     
 
