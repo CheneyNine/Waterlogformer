@@ -1,4 +1,4 @@
-# Waterlogformer: A Multimodal Model for Waterlogging
+# Waterlogformer: A Multimodal Model for Waterlogging Prediction
 
 ## Introduction
 
@@ -12,10 +12,7 @@ To model ***hydrological mechanisms*** and effectively fuse ***multimodal data**
 
 Experiment results on a real-world dataset demonstrate the superior performance of Waterlogformer.
 
-
 ![1758953951295](https://github.com/CheneyNine/Waterlogformer/blob/main/image/README/1758953951295.png)
-
-
 
 ## Prerequisites
 
