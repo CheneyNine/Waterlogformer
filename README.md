@@ -13,7 +13,7 @@ To model ***hydrological mechanisms*** and effectively fuse ***multimodal data**
 Experiment results on a real-world dataset demonstrate the superior performance of Waterlogformer.
 
 
-![1758953951295](https://file+.vscode-resource.vscode-cdn.net/Users/cheney/Documents/02025%20%E5%8D%8E%E4%B8%9C%E5%B8%88%E8%8C%83%E5%A4%A7%E5%AD%A6/%E7%A0%94%E9%9B%B6%202024-2025/Waterlogformer/image/README/1758953951295.png)
+![1758953951295](https://github.com/CheneyNine/Waterlogformer/blob/main/image/README/1758953951295.png)
 
 
 
