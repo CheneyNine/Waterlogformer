@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 Our gratitude extends to the authors of the following repositories for their foundational model implementations:
 
-- [Autoformer](https://github.com/thuml/Autoformer)
 - [Time-Series-Library](https://github.com/thuml/Time-Series-Library)
+- [Autoformer](https://github.com/thuml/Autoformer)
 - [PatchTST](https://github.com/yuqinie98/PatchTST)
 - [Crossformer](https://github.com/Thinklab-SJTU/Crossformer)
